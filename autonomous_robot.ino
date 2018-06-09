@@ -58,7 +58,7 @@ void loop() {
   if (Serial.available()) {
     byte ch = Serial.read();
     if (ch >= '1' && ch <= '9') {
-      int desiredSpeed = map(ch - '0', 1, 9, -900, 900);
+      double desiredSpeed = map(ch - '0', 1, 9, -50, 50) / 100.0;
       leftMotor.setDesiredSpeed(desiredSpeed);
       rightMotor.setDesiredSpeed(desiredSpeed);
     }

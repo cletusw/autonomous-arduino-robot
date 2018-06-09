@@ -6,6 +6,8 @@ class MotorController {
   Adafruit_DCMotor &motor;
   const uint8_t maxMotorCommand;
   int16_t signedMotorCommand = 0; // -255 to 255
+  const unsigned long pidSamplePeriodMillis;
+  const double metersPerSecondToPulsesPerSample;
   PID pid;
   long encoderCountPrevious = 0;
   double desiredSpeed = 0; // in encoder clicks per samplePeriodMillis
@@ -24,14 +26,22 @@ class MotorController {
   ) :
       motor(motor),
       maxMotorCommand(maxMotorCommand),
+      pidSamplePeriodMillis(pidSamplePeriodMillis),
+      metersPerSecondToPulsesPerSample(
+        0.001 /*  s/ms */ *
+        3840.0 /* pulses/rev */ /
+        0.204 /* m/rev */ *
+        pidSamplePeriodMillis /* ms/sample */
+        /* = pulses/sample */),
       pid(&measuredSpeed, &pidOutput, &desiredSpeed, Kp, Ki, Kd, DIRECT) {
     pid.SetSampleTime(pidSamplePeriodMillis);
     pid.SetOutputLimits(-255, 255); // Capped to maxMotorCommand separately
     pid.SetMode(AUTOMATIC);
   }
 
-  void setDesiredSpeed(double desiredSpeed) {
-    this->desiredSpeed = desiredSpeed;
+  // 0.5 m/s is about the most I've been getting from these motors
+  void setDesiredSpeed(double desiredSpeedInMetersPerSecond) {
+    this->desiredSpeed = desiredSpeedInMetersPerSecond * metersPerSecondToPulsesPerSample;
     if (desiredSpeed == 0) {
       pid.SetMode(MANUAL);
       signedMotorCommand = 0;
@@ -69,9 +79,9 @@ class MotorController {
   }
 
   void log(Stream &stream) {
-    stream.print(desiredSpeed);
+    stream.print(desiredSpeed / metersPerSecondToPulsesPerSample * 500.0); // x500 for better range for Serial Plotter
     stream.print(' ');
-    stream.print(measuredSpeed);
+    stream.print(measuredSpeed / metersPerSecondToPulsesPerSample * 500.0); // x500 for better range for Serial Plotter
     stream.print(' ');
     stream.print(signedMotorCommand);
     stream.println();
