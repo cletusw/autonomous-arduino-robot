@@ -7,12 +7,9 @@
 #include "median5.h"
 
 // PID
-const double leftKp = 0.05;
-const double leftKi = 0.002;
-const double leftKd = 0;
-const double rightKp = 0.05;
-const double rightKi = 0.002;
-const double rightKd = 0;
+const double Kp = 0.05;
+const double Ki = 0.002;
+const double Kd = 0;
 const unsigned long pidSamplePeriodMillis = 100;
 unsigned long nextMillis = 0;
 
@@ -21,8 +18,8 @@ const uint8_t maxMotorCommand = 255;
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 Adafruit_DCMotor *motor1 = AFMS.getMotor(1);
 Adafruit_DCMotor *motor2 = AFMS.getMotor(2);
-MotorController leftMotor(*motor1, maxMotorCommand, pidSamplePeriodMillis, leftKp, leftKi, leftKd);
-MotorController rightMotor(*motor2, maxMotorCommand, pidSamplePeriodMillis, rightKp, rightKi, rightKd);
+MotorController leftMotor(*motor1, maxMotorCommand, pidSamplePeriodMillis, Kp, Ki, Kd);
+MotorController rightMotor(*motor2, maxMotorCommand, pidSamplePeriodMillis, Kp, Ki, Kd);
 
 // Ultrasonic sensor
 const int TRIG_PIN = 10;
