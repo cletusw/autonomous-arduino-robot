@@ -11,19 +11,20 @@ const double Kp = 0.05;
 const double Ki = 0.002;
 const double Kd = 0;
 const unsigned long pidSamplePeriodMillis = 100;
-unsigned long nextMillis = 0;
 
 // Motors
 const uint8_t maxMotorCommand = 255;
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 Adafruit_DCMotor *motor1 = AFMS.getMotor(1);
 Adafruit_DCMotor *motor2 = AFMS.getMotor(2);
-MotorController leftMotor(*motor1, maxMotorCommand, pidSamplePeriodMillis, Kp, Ki, Kd);
-MotorController rightMotor(*motor2, maxMotorCommand, pidSamplePeriodMillis, Kp, Ki, Kd);
+MotorController leftMotor(*motor1, encoderDCountInternal, maxMotorCommand, pidSamplePeriodMillis, Kp, Ki, Kd);
+MotorController rightMotor(*motor2, encoderBCountInternal, maxMotorCommand, pidSamplePeriodMillis, Kp, Ki, Kd);
 
 // For all distance readings
 const uint8_t maxDistance = 100;
 const uint8_t minDistance = 10;
+const unsigned long distanceSamplePeriodMillis = 50;
+unsigned long nextMillis = 0;
 
 // Ultrasonic sensor
 const uint8_t TRIG_PIN = 10;
@@ -58,12 +59,10 @@ void setup() {
   leftMotor.drive();
   rightMotor.drive();
 
-  nextMillis = millis() + pidSamplePeriodMillis;
+  nextMillis = millis() + distanceSamplePeriodMillis;
 }
 
 void loop() {
-  unsigned long currentMillis = millis();
-
   if (Serial.available()) {
     byte ch = Serial.read();
     if (ch >= '1' && ch <= '9') {
@@ -73,19 +72,17 @@ void loop() {
     }
   }
 
-  if (currentMillis > nextMillis) {
-    nextMillis += pidSamplePeriodMillis;
-
-    leftMotor.updateMeasuredSpeed(encoderDCountInternal);
-    rightMotor.updateMeasuredSpeed(encoderBCountInternal);
+  if (millis() > nextMillis) {
+    nextMillis += distanceSamplePeriodMillis;
 
 //    leftMotor.log(Serial);
 //    rightMotor.log(Serial);
 
-    getDistanceReadings();
+    takeDistanceReadings();
     uint16_t ir0Distance = ir0.out();
     uint16_t ultrasonicDistance = ultrasonicFilter.out();
     uint16_t ir1Distance = ir1.out();
+
     Serial.print(ir0Distance);
     Serial.print(' ');
     Serial.print(ultrasonicDistance);
@@ -106,14 +103,14 @@ void loop() {
 void initializeSmoothing() {
   // fill buffer with readings
   for (uint8_t i = 0; i < distanceFilterSize; i++) {
-    getDistanceReadings();
+    takeDistanceReadings();
     delay(25);
   }
 }
 
 // Need to wait 38ms +/- 10ms between IR readings,
 // so you'll probably need a delay(25); after calling this
-void getDistanceReadings() {
+void takeDistanceReadings() {
   ir0.in(irReadingToDistance(analogRead(IR0_PIN)));
   ir1.in(irReadingToDistance(analogRead(IR1_PIN)));
   ultrasonicFilter.in(constrain(

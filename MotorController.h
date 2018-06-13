@@ -4,12 +4,12 @@ class MotorController {
   private:
 
   Adafruit_DCMotor &motor;
+  volatile long &encoderCount;
   const uint8_t maxMotorCommand;
   int16_t signedMotorCommand = 0; // -255 to 255
   const unsigned long pidSamplePeriodMillis;
   const double metersPerSecondToPulsesPerSample;
   PID pid;
-  long encoderCountPrevious = 0;
   double desiredSpeed = 0; // in encoder clicks per samplePeriodMillis
   double measuredSpeed = 0; // in encoder clicks per samplePeriodMillis
   double pidOutput = 0;
@@ -18,6 +18,7 @@ class MotorController {
 
   MotorController(
       Adafruit_DCMotor &motor,
+      volatile long &encoderCount,
       uint8_t maxMotorCommand,
       unsigned long pidSamplePeriodMillis,
       double Kp,
@@ -25,6 +26,7 @@ class MotorController {
       double Kd
   ) :
       motor(motor),
+      encoderCount(encoderCount),
       maxMotorCommand(maxMotorCommand),
       pidSamplePeriodMillis(pidSamplePeriodMillis),
       metersPerSecondToPulsesPerSample(
@@ -47,20 +49,22 @@ class MotorController {
       signedMotorCommand = 0;
     }
     else {
+      noInterrupts();
+      encoderCount = 0;
+      interrupts();
       pid.SetMode(AUTOMATIC);
     }
   }
 
-  void updateMeasuredSpeed(volatile long &encoderCount) {
-    noInterrupts();
-    long tempEncoderCount = encoderCount;
-    interrupts();
-    measuredSpeed = tempEncoderCount - encoderCountPrevious;
-    encoderCountPrevious = tempEncoderCount;
-  }
-
   void drive() {
+    noInterrupts();
+    measuredSpeed = encoderCount;
+    interrupts();
+
     if (pid.Compute()) { // If pidSamplePeriodMillis met, reads measuredSpeed, desiredSpeed, sets pidOutput, returns true
+      noInterrupts();
+      encoderCount = 0;
+      interrupts();
       signedMotorCommand = constrain(signedMotorCommand + pidOutput, -maxMotorCommand, maxMotorCommand);
     }
   
